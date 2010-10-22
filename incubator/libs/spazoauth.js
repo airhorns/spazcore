@@ -4,7 +4,7 @@
  */
 function SpazOAuth(args) {
 	
-	this.db = new SpazDB();
+	// this.db = new SpazDB();
 	this.services = {};
 	this.requestToken = null;
 	this.accessToken = null;
@@ -15,12 +15,12 @@ function SpazOAuth(args) {
 
 	// Check to see if there is already an access token in the local database
 	var that = this;
-	this.db.get('oauth', function(doc) {
-		if (doc && doc[that.getService().name]) {
-			that.accessToken = doc[that.getService().name].accessToken;
-			that.accessTokenSecret = doc[that.getService().name].accessTokenSecret;
-		}
-	});
+	// this.db.get('oauth', function(doc) {
+	// 	if (doc && doc[that.getService().name]) {
+	// 		that.accessToken = doc[that.getService().name].accessToken;
+	// 		that.accessTokenSecret = doc[that.getService().name].accessTokenSecret;
+	// 	}
+	// });
 
 };
 
@@ -30,8 +30,8 @@ function SpazOAuth(args) {
 SpazOAuth.prototype.initServices = function() {
 	this.addService('twitter', {
 		signatureMethod      : 'HMAC-SHA1',
-		consumerKey          : 't94eBtc4Pz2zqo4KhABseQ',
-		consumerSecret       : 'PMEkuk4xQpQMY7HqpHZqddzg9TYr4MyJxd8kujivE',
+		consumerKey          : 'at0rryC4zHWNcIRhbIW0Fw',
+		consumerSecret       : '1NrCi94u62mwaAvZyDjdznOVUN0vQdfsyLpiy2O4',
 		requestTokenUrl      : 'https://twitter.com/oauth/request_token',
 		accessTokenUrl       : 'https://twitter.com/oauth/access_token',
 		userAuthorizationUrl : 'https://twitter.com/oauth/authorize'
@@ -100,33 +100,74 @@ SpazOAuth.prototype.getRequestToken = function() {
 		url: this.getService().requestTokenUrl
 	});
 
-	jQuery.ajax({
+	var xhr = jQuery.ajax({
 		async: false,
 		type: method,
 		url: this.getService().requestTokenUrl,
 		beforeSend: function(req) {
 			req.setRequestHeader('Authorization', authHeader);
 			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+			return true;
 		},
-		complete: function(req, textStatus) {
-			if (req.status == 200) {
-				var results = OAuth.decodeForm(req.responseText);
-				that.requestToken = OAuth.getParameter(results, 'oauth_token');
+		error: function(req, textStatus, e) {
+			sch.error("Error fetching request token!");
+			sch.error(e);
+		},
+		success: function(data, textStatus,req) {
+			var results = OAuth.decodeForm(req.responseText);
+			that.requestToken = OAuth.getParameter(results, 'oauth_token');
 
-				// Open another browser window to allow the user to authorize
-				// service access to Spaz and retrieve the authorization PIN
-				sc.helpers.openInBrowser(OAuth.addToURL(
-					that.getService().userAuthorizationUrl,
-					{oauth_token : that.requestToken}
-				));
-
-				success = true;
-			}
+			// Open another browser window to allow the user to authorize
+			// service access to Spaz and retrieve the authorization PIN
+			// sc.helpers.openInBrowser(OAuth.addToURL(
+			// 	that.getService().userAuthorizationUrl,
+			// 	{oauth_token : that.requestToken}
+			// ));
 		}
 	});
 
-	return success;
+	return Titanium.Network.httpSuccess(xhr);
 
+};
+
+/**
+ * Gets the request token
+ */
+SpazOAuth.prototype.getRequestTokenAsync = function(onSuccess, onError) {
+
+	var that = this;
+	var method = 'post';
+	var authHeader = this.getAuthHeader({
+		method: method,
+		url: this.getService().requestTokenUrl
+	});
+
+	var xhr = jQuery.ajax({
+		type: method,
+		url: this.getService().requestTokenUrl,
+		beforeSend: function(req) {
+			req.setRequestHeader('Authorization', authHeader);
+			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+			return true;
+		},
+		error: function(req, textStatus, e) {
+			onError(req, textStatus, e);
+		},
+		success: function(data, textStatus,req) {
+			var results = OAuth.decodeForm(req.responseText);
+			that.requestToken = OAuth.getParameter(results, 'oauth_token');
+			
+			onSuccess(that.requestToken, req);
+			// Open another browser window to allow the user to authorize
+			// service access to Spaz and retrieve the authorization PIN
+			// sc.helpers.openInBrowser(OAuth.addToURL(
+			// 	that.getService().userAuthorizationUrl,
+			// 	{oauth_token : that.requestToken}
+			// ));
+		}
+	});
+
+	return xhr;
 };
 
 
@@ -152,7 +193,7 @@ SpazOAuth.prototype.getAuthorization = function(accessPIN) {
 		]
 	});
 
-	jQuery.ajax({
+	xhr = jQuery.ajax({
 		async: false,
 		type: method,
 		url: this.getService().accessTokenUrl,
@@ -160,26 +201,45 @@ SpazOAuth.prototype.getAuthorization = function(accessPIN) {
 			req.setRequestHeader('Authorization', authHeader);
 			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 		},
-		complete: function(req, textStatus) {
-			if (req.status == 200) {
-				var results = OAuth.decodeForm(req.responseText);
-				that.accessToken = OAuth.getParameter(results, 'oauth_token');
-				that.accessTokenSecret = OAuth.getParameter(results, 'oauth_token_secret');
-
-				// Store the access token to the local database
-				var doc = { key: 'oauth' };
-				doc[that.getService().name] = {
-					accessToken: that.accessToken,
-					accessTokenSecret: that.accessTokenSecret
-				};
-				that.db.set(doc);
-
-				success = true;
-			}
+		error: function(req, textStatus, error) {
+			sch.error("Error fetching access token! Status: "+textStatus+", error: ");
+			sch.error(error);
 		}
+		// success: function(data, req, textStatus) {
+		// 	var results = OAuth.decodeForm(data);
+		// 	that.accessToken = OAuth.getParameter(results, 'oauth_token');
+		// 	that.accessTokenSecret = OAuth.getParameter(results, 'oauth_token_secret');
+		// 
+		// 	// Store the access token to the local database
+		// 	var doc = { key: 'oauth' };
+		// 	doc[that.getService().name] = {
+		// 		accessToken: that.accessToken,
+		// 		accessTokenSecret: that.accessTokenSecret
+		// 	};
+		// 	// that.db.set(doc);
+		// 
+		// 	success = true;
+		// }
 	});
 
-	return success;
+
+	if(Titanium.Network.httpSuccess(xhr) && xhr.responseText.length > 0) {
+		var results = OAuth.decodeForm(xhr.responseText);
+		that.accessToken = OAuth.getParameter(results, 'oauth_token');
+		that.accessTokenSecret = OAuth.getParameter(results, 'oauth_token_secret');
+
+		// Store the access token to the local database
+		var doc = { key: 'oauth' };
+		doc[that.getService().name] = {
+			accessToken: that.accessToken,
+			accessTokenSecret: that.accessTokenSecret
+		};
+		// that.db.set(doc);
+		return true;
+	} else {
+		return false;
+	}
+
 };
 
 
@@ -243,7 +303,7 @@ SpazOAuth.prototype.getXauthTokens = function(opts) {
 					accessToken: that.accessToken,
 					accessTokenSecret: that.accessTokenSecret
 				};
-				that.db.set(doc);
+				// that.db.set(doc);
 				if (opts.onSuccess) {
 					opts.onSuccess(data, textStatus);
 				}			
@@ -272,7 +332,6 @@ SpazOAuth.prototype.getXauthTokens = function(opts) {
  * @param {string} [options.url] the url
  */
 SpazOAuth.prototype.getAuthHeader = function(options) {
-
 	var complete_opts;
 
 	if (!options.method || !options.url) {
@@ -303,9 +362,8 @@ SpazOAuth.prototype.getAuthHeader = function(options) {
 		};	
 	}
 
-
 	OAuth.completeRequest(message, complete_opts);
-
+	
 	var authHeader = OAuth.getAuthorizationHeader(
 		this.getService().name,
 		message.parameters

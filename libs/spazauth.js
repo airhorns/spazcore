@@ -322,7 +322,7 @@ SpazOAuth.prototype.setAccessToken = function(key, secret) {
  */
 SpazOAuth.prototype.signRequest = function(method, url, parameters) {
     // We need to copy parameters because OAuth.js modifies it.
-    var param = jQuery.extend({}, parameters);
+    var param = _.extend({}, parameters);
 
     OAuth.completeRequest({
         method: method,

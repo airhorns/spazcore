@@ -187,7 +187,7 @@ function SpazTwit(opts) {
 		auth:         null,
 		username:     null,
 		event_mode:   'DOM',
-		event_target: document,
+		//event_target: document,
 		timeout:      this.DEFAULT_TIMEOUT
 	}, opts);
 	
@@ -217,7 +217,7 @@ function SpazTwit(opts) {
 	 * remap dump calls as appropriate 
 	 */
 	if (sc && sc.helpers && sc.helpers.dump) {
-		window.dump = sc.helpers.dump;
+		// window.dump = sc.helpers.dump;
 	} else { // do nothing!
 		var dump = function(input) {
 			return;
@@ -488,7 +488,7 @@ SpazTwit.prototype.getAPIURL = function(key, urldata) {
 	urls.user_timeline      = "statuses/user_timeline.json";
 	urls.replies_timeline   = "statuses/replies.json";
 	urls.show		= "statuses/show/{{ID}}.json";
-	urls.show_related	= "related_results/show/{{ID}}.json"
+	urls.show_related	= "related_results/show/{{ID}}.json";
 	urls.favorites          = "favorites.json";
 	urls.user_favorites     = "favorites/{{ID}}.json"; // use this to retrieve favs of a user other than yourself
 	urls.dm_timeline        = "direct_messages.json";
@@ -1418,10 +1418,15 @@ SpazTwit.prototype._getTimeline = function(opts) {
 			}			
         },
         'beforeSend':function(xhr){
-			sc.helpers.dump(opts.url + ' beforesend');
 			if (stwit.auth) {
 				sch.debug('signing request');
-				xhr.setRequestHeader('Authorization', stwit.auth.signRequest(opts.method, opts.url, opts.data));
+				var auth_header = stwit.auth.getAuthHeader({
+					method: opts.method,
+					url: opts.url,
+					parameters: opts.data
+				});
+				Ti.API.debug("Signing with "+auth_header);
+				xhr.setRequestHeader('Authorization', auth_header);
 			} else {
 				sch.debug('NOT signing request -- no auth object provided');
 			}
@@ -1761,8 +1766,10 @@ SpazTwit.prototype.getEchoHeader = function(opts) {
 	}
 	
 	var method = 'GET';
-
-	var auth_header = this.auth.signRequest(method, url, null);
+	var auth_header = this.auth.getAuthHeader({
+		method: method,
+		url: url
+	});
 
 	return auth_header;
 };
@@ -1873,10 +1880,15 @@ SpazTwit.prototype._callMethod = function(opts) {
 			}
 	    },
 	    'beforeSend':function(xhr){
-			sc.helpers.dump(opts.url + ' beforesend');
 			if (stwit.auth) {
 				sch.debug('signing request');
-				xhr.setRequestHeader('Authorization', stwit.auth.signRequest(method, opts.url, opts.data));
+				var auth_header = stwit.auth.getAuthHeader({
+					method: method,
+					url: opts.url,
+					parameters: opts.data
+				});
+				Ti.API.debug("Signing with "+auth_header);
+				xhr.setRequestHeader('Authorization', auth_header);
 			} else {
 				sch.debug('NOT signing request -- no auth object provided');
 			}
@@ -3578,17 +3590,17 @@ SpazTwit.prototype.userStreamExists = function() {
  *  
  */
 SpazTwit.prototype.triggerEvent = function(type, data) {
-	var target = this.opts.event_target || document;
-	data   = data || null;
-	
-	sc.helpers.dump('TriggerEvent: target:'+target.toString()+ ' type:'+type+ ' data:'+data);
-	
-	if (this.opts.event_mode === 'jquery') {
-		data = [data];
-		jQuery(target).trigger(type, data);
-	} else {
-		sc.helpers.trigger(type, target, data);	
-	}
+	// var target = this.opts.event_target || document;
+	// data   = data || null;
+	// 
+	// sc.helpers.dump('TriggerEvent: target:'+target.toString()+ ' type:'+type+ ' data:'+data);
+	// 
+	// if (this.opts.event_mode === 'jquery') {
+	// 	data = [data];
+	// 	jQuery(target).trigger(type, data);
+	// } else {
+	// 	sc.helpers.trigger(type, target, data);	
+	// }
 	
 };
 

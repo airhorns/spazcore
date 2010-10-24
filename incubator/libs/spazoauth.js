@@ -193,6 +193,9 @@ SpazOAuth.prototype.getAuthorization = function(accessPIN) {
 		]
 	});
 
+	Ti.API.debug("Auth Header for authorization:");
+	Ti.API.debug(authHeader);
+	
 	xhr = jQuery.ajax({
 		async: false,
 		type: method,
@@ -202,8 +205,9 @@ SpazOAuth.prototype.getAuthorization = function(accessPIN) {
 			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 		},
 		error: function(req, textStatus, error) {
-			sch.error("Error fetching access token! Status: "+textStatus+", error: ");
+			sch.error("Error fetching access token! Status: "+textStatus+" ("+req.status+"), error: ");
 			sch.error(error);
+			sch.error(req.responseText);
 		}
 		// success: function(data, req, textStatus) {
 		// 	var results = OAuth.decodeForm(data);
@@ -332,22 +336,23 @@ SpazOAuth.prototype.getXauthTokens = function(opts) {
  * @param {string} [options.url] the url
  */
 SpazOAuth.prototype.getAuthHeader = function(options) {
-	var complete_opts;
+	var complete_opts, params;
 
 	if (!options.method || !options.url) {
 		return false;
 	}
 
 	if (!options.parameters) {
-		options.parameters = [];
+		params = [];
+	} else {
+		if(_.isArray(options.parameters)) {
+			params = _.compact(options.parameters);
+		} else {
+			params = _.extend({}, options.parameters);
+		}
+
 	}
-
-	var message = {
-		method: options.method,
-		action: options.url,
-		parameters: options.parameters
-	};
-
+	
 	if (options.xauth) {
 		complete_opts = {
 			consumerKey: this.getService().consumerKey,
@@ -362,13 +367,19 @@ SpazOAuth.prototype.getAuthHeader = function(options) {
 		};	
 	}
 
+	var message = {
+		method: options.method,
+		action: options.url,
+		parameters: params
+	};
+		
 	OAuth.completeRequest(message, complete_opts);
-	
+		
 	var authHeader = OAuth.getAuthorizationHeader(
 		this.getService().name,
-		message.parameters
+		params
 	);
-
+	
 	return authHeader;
 };
 

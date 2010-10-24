@@ -476,9 +476,11 @@ SpazTwit.prototype.setSource = function(new_source) {
  * @param {string} key the key for the URL
  * @param {array|object} urldata data to included in the URL as GET data
 */
-SpazTwit.prototype.getAPIURL = function(key, urldata) {
+SpazTwit.prototype.getAPIURL = function(key, urldata, post) {
 	var urls = {};
-
+	if (_.isUndefined(post)) {
+		post = false;
+	}
 
 
     // Timeline URLs
@@ -503,8 +505,8 @@ SpazTwit.prototype.getAPIURL = function(key, urldata) {
 	urls.destroy_status   	= "statuses/destroy/{{ID}}.json";
 	urls.dm_new             = "direct_messages/new.json";
 	urls.dm_destroy         = "direct_messages/destroy/{{ID}}.json";
-	urls.friendship_create  = "friendships/create/{{ID}}.json";
-	urls.friendship_destroy	= "friendships/destroy/{{ID}}.json";
+	urls.friendship_create  = "friendships/create.json";
+	urls.friendship_destroy	= "friendships/destroy.json";
 	urls.friendship_show	= "friendships/show.json";
 	urls.friendship_incoming	= "friendships/incoming.json";
 	urls.friendship_outgoing	= "friendships/outgoing.json";
@@ -512,8 +514,8 @@ SpazTwit.prototype.getAPIURL = function(key, urldata) {
 	urls.graph_followers	= "followers/ids.json";
 	urls.block_create		= "blocks/create/{{ID}}.json";
 	urls.block_destroy		= "blocks/destroy/{{ID}}.json";
-	urls.follow             = "notifications/follow/{{ID}}.json";
-	urls.unfollow			= "notifications/leave/{{ID}}.json";
+	urls.follow             = "notifications/follow.json";
+	urls.unfollow			= "notifications/leave.json";
 	urls.favorites_create 	= "favorites/create/{{ID}}.json";
 	urls.favorites_destroy	= "favorites/destroy/{{ID}}.json";
 	urls.saved_searches_create 	= "saved_searches/create.json";
@@ -583,11 +585,15 @@ SpazTwit.prototype.getAPIURL = function(key, urldata) {
     }
 
     if (urls[key]) {
-	
-		if (urldata && typeof urldata !== "string") {
-			urldata = '?'+jQuery.param(urldata);
+		
+		if(post) {
+			urldata = "";
 		} else {
-			urldata = '';
+			if (urldata && typeof urldata !== "string") {
+				urldata = '?'+jQuery.param(urldata);
+			} else {
+				urldata = '';
+			}
 		}
 		
 		if (this.baseurl === SPAZCORE_SERVICEURL_TWITTER && (key === 'search')) {
@@ -898,7 +904,7 @@ SpazTwit.prototype._processDMTimeline = function(ret_items, opts, processing_opt
 /**
  *  
  */
-SpazTwit.prototype.getFavorites = function(page, processing_opts, onSuccess, onFailure) {	
+SpazTwit.prototype.get = function(page, processing_opts, onSuccess, onFailure) {	
 	if (!page) { page = null;}
 	if (!processing_opts) {
 		processing_opts = {};
@@ -1155,7 +1161,7 @@ SpazTwit.prototype._processSearchTimeline = function(search_result, opts, proces
 		this.data[SPAZCORE_SECTION_SEARCH].items = this.data[SPAZCORE_SECTION_SEARCH].items.concat(this.data[SPAZCORE_SECTION_SEARCH].newitems);
 		
 		this.data[SPAZCORE_SECTION_SEARCH].items = this.removeDuplicates(this.data[SPAZCORE_SECTION_SEARCH].items);
-		sch.debug('NOT removing extras from search -- we don\'t do that anymore');
+		// sch.debug('NOT removing extras from search -- we don\'t do that anymore');
 		// this.data[SPAZCORE_SECTION_SEARCH].items = this.removeExtraElements(this.data[SPAZCORE_SECTION_SEARCH].items, this.data[SPAZCORE_SECTION_SEARCH].max);
 
 
@@ -1419,7 +1425,6 @@ SpazTwit.prototype._getTimeline = function(opts) {
         },
         'beforeSend':function(xhr){
 			if (stwit.auth) {
-				sch.debug('signing request');
 				var auth_header = stwit.auth.getAuthHeader({
 					method: opts.method,
 					url: opts.url,
@@ -1822,10 +1827,10 @@ SpazTwit.prototype._callMethod = function(opts) {
 	var xhr = jQuery.ajax({
 		'timeout' :this.opts.timeout,
 	    'complete':function(xhr, msg){
-	        sc.helpers.dump(opts.url + ' complete:'+msg);
+	        sc.helpers.dump(method + " " + opts.url + ' complete:'+msg);
 	    },
 	    'error':function(xhr, msg, exc) {
-			sc.helpers.error(opts.url + ' error:'+msg);
+			sc.helpers.error(method + " " + opts.url + ' error:'+msg);
 	        if (xhr) {
 				if (!xhr.readyState < 4) {
 					sc.helpers.dump("Error:"+xhr.status+" from "+opts['url']);
@@ -1861,7 +1866,7 @@ SpazTwit.prototype._callMethod = function(opts) {
 			stwit.triggerEvent('spaztwit_ajax_error', {'url':opts.url, 'xhr':xhr, 'msg':msg});
 	    },
 	    'success':function(data) {
-			sc.helpers.error(opts.url + ' success');
+			sc.helpers.error(method + " " + opts.url + ' success');
 			data = sc.helpers.deJSON(data);
 			if (opts.process_callback) {
 				/*
@@ -1881,7 +1886,6 @@ SpazTwit.prototype._callMethod = function(opts) {
 	    },
 	    'beforeSend':function(xhr){
 			if (stwit.auth) {
-				sch.debug('signing request');
 				var auth_header = stwit.auth.getAuthHeader({
 					method: method,
 					url: opts.url,
@@ -2025,7 +2029,7 @@ SpazTwit.prototype._processUserList = function(section_name, ret_items, opts, pr
 
 SpazTwit.prototype.addFriend = function(user_id, onSuccess, onFailure) {
 	var data = {};
-	data['id'] = user_id;
+	data['user_id'] = user_id;
 	
 	var url = this.getAPIURL('friendship_create', data);
 	
@@ -2045,7 +2049,7 @@ SpazTwit.prototype.addFriend = function(user_id, onSuccess, onFailure) {
 };
 SpazTwit.prototype.removeFriend = function(user_id, onSuccess, onFailure) {
 	var data = {};
-	data['id'] = user_id;
+	data['user_id'] = user_id;
 	
 	var url = this.getAPIURL('friendship_destroy', data);
 	
@@ -2260,10 +2264,14 @@ SpazTwit.prototype.unblock = function(user_id, onSuccess, onFailure) {
 
 SpazTwit.prototype.follow = function(user_id, onSuccess, onFailure) { // to add notification
 	var data = {};
-	data['id'] = user_id;
-	
+	data['user_id'] = user_id;
+
 	var url = this.getAPIURL('follow', data);
-	
+
+	delete data['id'];
+	data['user_id'] = user_id;
+
+	Ti.API.debug(url);
 	var opts = {
 		'url':url,
 		'username':this.username,
@@ -2272,7 +2280,7 @@ SpazTwit.prototype.follow = function(user_id, onSuccess, onFailure) { // to add 
 		'failure_event_type':'follow_failed',
 		'success_callback':onSuccess,
 		'failure_callback':onFailure,
-		'data':data
+		'data':{}
 	};
 
 	/*
@@ -2284,7 +2292,7 @@ SpazTwit.prototype.follow = function(user_id, onSuccess, onFailure) { // to add 
 
 SpazTwit.prototype.unfollow = function(user_id, onSuccess, onFailure) { // to remove notification
 	var data = {};
-	data['id'] = user_id;
+	data['user_id'] = user_id;
 	
 	var url = this.getAPIURL('unfollow', data);
 	
@@ -3601,7 +3609,6 @@ SpazTwit.prototype.triggerEvent = function(type, data) {
 	// } else {
 	// 	sc.helpers.trigger(type, target, data);	
 	// }
-	
 };
 
 /**
